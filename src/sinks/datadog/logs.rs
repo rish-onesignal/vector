@@ -116,7 +116,11 @@ impl DatadogLogsConfig {
     }
 
     /// Build the request, GZipping the contents if the config specifies.
-    fn build_request(&self, body: Vec<u8>) -> crate::Result<http::Request<Vec<u8>>> {
+    fn build_request(
+        &self,
+        body: Vec<u8>,
+        content_type: &str,
+    ) -> crate::Result<http::Request<Vec<u8>>> {
         let uri = format!("{}/v1/input", self.get_endpoint());
         let request = Request::post(uri)
             .header("Content-Type", "text/plain")
@@ -143,6 +147,7 @@ impl DatadogLogsConfig {
 
         request
             .header("Content-Length", body.len())
+            .header("Content-Type", content_type)
             .body(body)
             .map_err(Into::into)
     }
@@ -217,7 +222,7 @@ impl HttpSink for DatadogLogsJsonService {
 
     async fn build_request(&self, events: Self::Output) -> crate::Result<http::Request<Vec<u8>>> {
         let body = serde_json::to_vec(&events)?;
-        self.config.build_request(body)
+        self.config.build_request(body, "application/json")
     }
 }
 
@@ -232,7 +237,7 @@ impl HttpSink for DatadogLogsTextService {
 
     async fn build_request(&self, events: Self::Output) -> crate::Result<http::Request<Vec<u8>>> {
         let body: Vec<u8> = events.into_iter().flat_map(Bytes::into_iter).collect();
-        self.config.build_request(body)
+        self.config.build_request(body, "text/plain")
     }
 }
 
